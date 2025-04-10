@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>密码学算法工具</title>
+    <link href="https://cdn.bootcdn.net/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background-color: #000;
+            color: #fff;
+            position: relative;
+        }
+        #matrix-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+        }
+        .container {
+            max-width: 800px;
+            background-color: rgba(255, 255, 255, 0.95);
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0, 255, 0, 0.2);
+            position: relative;
+            color: #000;
+            backdrop-filter: blur(5px);
+        }
+        .btn-group {
+            width: 100%;
+            margin-top: 20px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        .verify-result {
+            margin-bottom: 20px;
+            padding: 10px;
+            border-radius: 5px;
+            display: block;
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .verify-success {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .verify-fail {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .key-group {
+            display: none;
+            margin-bottom: 20px;
+        }
+        .signature-group {
+            display: none;
+            margin-bottom: 20px;
+        }
+        .form-control, .form-select {
+            background-color: rgba(255, 255, 255, 0.9);
+            border: 1px solid rgba(0, 255, 0, 0.2);
+        }
+        .form-control:focus, .form-select:focus {
+            border-color: rgba(0, 255, 0, 0.5);
+            box-shadow: 0 0 0 0.2rem rgba(0, 255, 0, 0.25);
+        }
+        h1 {
+            color: #000;
+            text-shadow: 0 0 10px rgba(0, 255, 0, 0.3);
+        }
+    </style>
+</head>
+<body>
+    <canvas id="matrix-bg"></canvas>
+    <div class="container">
+        <h1 class="text-center mb-4">密码学算法工具</h1>
+        
+        <!-- 错误提示框 -->
+        <div class="alert alert-danger" id="errorAlert" style="display: none;">
+            <span id="errorMessage"></span>
+        </div>
+        
+        <!-- 验证结果框 -->
+        <div class="verify-result" id="verifyResult" style="display: none;">
+            <span id="verifyMessage"></span>
+        </div>
+
+        <form id="cryptoForm">
+            <div class="form-group">
+                <label for="algorithm">选择算法:</label>
+                <select class="form-select" id="algorithm" name="algorithm">
+                    <optgroup label="对称加密算法">
+                        <option value="AES">AES</option>
+                        <option value="SM4">SM4</option>
+                        <option value="RC6">RC6</option>
+                    </optgroup>
+                    <optgroup label="哈希算法">
+                        <option value="SHA1">SHA1</option>
+                        <option value="SHA256">SHA256</option>
+                        <option value="SHA3">SHA3</option>
+                        <option value="RIPEMD160">RIPEMD160</option>
+                        <option value="HMAC-SHA1">HMAC-SHA1</option>
+                        <option value="HMAC-SHA256">HMAC-SHA256</option>
+                        <option value="PBKDF2">PBKDF2</option>
+                    </optgroup>
+                    <optgroup label="编码算法">
+                        <option value="Base64">Base64</option>
+                        <option value="UTF-8">UTF-8</option>
+                    </optgroup>
+                    <optgroup label="公钥密码算法">
+                        <option value="RSA">RSA-1024bit</option>
+                        <option value="ECC">ECC-160bit</option>
+                        <option value="RSA-SHA1">RSA-SHA1</option>
+                        <option value="ECDSA">ECDSA</option>
+                    </optgroup>
+                </select>
+            </div>
+
+            <div class="form-group" id="keyGroup">
+                <label for="key">密钥:</label>
+                <input type="text" class="form-control" id="key" name="key" placeholder="请输入密钥">
+            </div>
+
+            <div class="key-group" id="publicKeyGroup">
+                <label for="publicKey">公钥:</label>
+                <textarea class="form-control" id="publicKey" name="publicKey" rows="3" placeholder="请输入或生成公钥"></textarea>
+            </div>
+
+            <div class="key-group" id="privateKeyGroup">
+                <label for="privateKey">私钥:</label>
+                <textarea class="form-control" id="privateKey" name="privateKey" rows="3" placeholder="请输入或生成私钥"></textarea>
+            </div>
+
+            <div class="form-group">
+                <label for="plaintext">原文:</label>
+                <textarea class="form-control" id="plaintext" name="plaintext" rows="3" placeholder="请输入要处理的文本"></textarea>
+            </div>
+
+            <div class="signature-group" id="signatureGroup">
+                <label for="signature">签名值:</label>
+                <textarea class="form-control" id="signature" name="signature" rows="3" readonly></textarea>
+            </div>
+
+            <div class="form-group" id="ciphertextGroup">
+                <label for="ciphertext">密文:</label>
+                <textarea class="form-control" id="ciphertext" name="ciphertext" rows="3" readonly></textarea>
+            </div>
+
+            <div class="btn-group">
+                <button type="button" class="btn btn-warning" onclick="generateKeyPair()" id="generateBtn" style="display: none;">生成密钥对</button>
+                <button type="button" class="btn btn-success" onclick="encryptOrSign()" id="encryptBtn">加密</button>
+                <button type="button" class="btn btn-primary" onclick="decryptOrVerify()" id="decryptBtn">解密</button>
+            </div>
+        </form>
+    </div>
+
+    <script>
+        // Matrix background effect
+        const canvas = document.getElementById('matrix-bg');
+        const ctx = canvas.getContext('2d');
+
+        // Set canvas size
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+
+        // Matrix characters
+        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$%^&*';
+        const fontSize = 14;
+        const columns = canvas.width / fontSize;
+        const drops = [];
+
+        // Initialize drops
+        for (let i = 0; i < columns; i++) {
+            drops[i] = 1;
+        }
+
+        function draw() {
+            // Semi-transparent black background to create fade effect
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Green text
+            ctx.fillStyle = '#0F0';
+            ctx.font = fontSize + 'px monospace';
+
+            // Draw characters
+            for (let i = 0; i < drops.length; i++) {
+                const text = chars[Math.floor(Math.random() * chars.length)];
+                ctx.fillText(text, i * fontSize, drops[i] * fontSize);
+
+                if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) {
+                    drops[i] = 0;
+                }
+                drops[i]++;
+            }
+        }
+
+        // Animation loop
+        setInterval(draw, 33);
+
+        function generateKeyPair() {
+            const algorithm = document.getElementById('algorithm').value;
+            
+            fetch('/generate', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ algorithm: algorithm })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    alert(data.error);
+                } else {
+                    document.getElementById('publicKey').value = data.public_key;
+                    document.getElementById('privateKey').value = data.private_key;
+                }
+            })
+            .catch(error => {
+                console.error('生成密钥对失败:', error);
+                alert('生成密钥对失败: ' + error);
+            });
+        }
+
+        function encryptOrSign() {
+            const algorithm = document.getElementById('algorithm').value;
+            const plaintext = document.getElementById('plaintext').value;
+            
+            if (!plaintext) {
+                alert('请输入原文');
+                return;
+            }
+
+            let endpoint = '';
+            let data = {
+                algorithm: algorithm,
+                plaintext: plaintext
+            };
+
+            if (['ECC', 'ECDSA', 'RSA-SHA1'].includes(algorithm)) {
+                endpoint = '/sign';
+                data.private_key = document.getElementById('privateKey').value;
+                if (!data.private_key) {
+                    alert('请先生成或输入私钥');
+                    return;
+                }
+            } else if (algorithm === 'RSA') {
+                endpoint = '/encrypt';
+                data.key = document.getElementById('publicKey').value;
+                if (!data.key) {
+                    alert('请先生成或输入公钥');
+                    return;
+                }
+            } else if (['Base64', 'UTF-8'].includes(algorithm)) {
+                endpoint = '/encrypt';  // 使用encrypt端点进行编码
+            } else {
+                endpoint = '/encrypt';
+                data.key = document.getElementById('key').value;
+                if (!data.key && !['SHA1', 'SHA256', 'SHA3', 'RIPEMD160'].includes(algorithm)) {
+                    alert('请输入密钥');
+                    return;
+                }
+            }
+
+            fetch(endpoint, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    alert(data.error);
+                } else if (data.signature) {
+                    document.getElementById('signature').value = data.signature;
+                } else {
+                    document.getElementById('ciphertext').value = data.ciphertext;
+                }
+            })
+            .catch(error => {
+                console.error('操作失败:', error);
+                alert('操作失败: ' + error);
+            });
+        }
+
+        function decryptOrVerify() {
+            const algorithm = document.getElementById('algorithm').value;
+            const plaintext = document.getElementById('plaintext').value;
+            const verifyResult = document.getElementById('verifyResult');
+            const verifyMessage = document.getElementById('verifyMessage');
+            const errorAlert = document.getElementById('errorAlert');
+            const errorMessage = document.getElementById('errorMessage');
+            
+            // 隐藏之前的结果
+            verifyResult.style.display = 'none';
+            errorAlert.style.display = 'none';
+            
+            if (!plaintext) {
+                errorMessage.textContent = '错误：请输入原文';
+                errorAlert.style.display = 'block';
+                return;
+            }
+            
+            let endpoint = '';
+            let data = {
+                algorithm: algorithm,
+                plaintext: plaintext
+            };
+
+            if (['ECC', 'ECDSA', 'RSA-SHA1'].includes(algorithm)) {
+                endpoint = '/verify';
+                const publicKey = document.getElementById('publicKey').value;
+                const signature = document.getElementById('signature').value;
+                
+                if (!publicKey) {
+                    errorMessage.textContent = '错误：请输入公钥';
+                    errorAlert.style.display = 'block';
+                    return;
+                }
+                
+                if (!signature) {
+                    errorMessage.textContent = '错误：请输入签名值';
+                    errorAlert.style.display = 'block';
+                    return;
+                }
+                
+                data = {
+                    algorithm: algorithm,
+                    public_key: publicKey,
+                    plaintext: plaintext,
+                    signature: signature
+                };
+            } else if (algorithm === 'RSA') {
+                endpoint = '/decrypt';
+                const privateKey = document.getElementById('privateKey').value;
+                const ciphertext = document.getElementById('ciphertext').value;
+                
+                if (!privateKey) {
+                    errorMessage.textContent = '错误：请输入私钥';
+                    errorAlert.style.display = 'block';
+                    return;
+                }
+                
+                if (!ciphertext) {
+                    errorMessage.textContent = '错误：请输入密文';
+                    errorAlert.style.display = 'block';
+                    return;
+                }
+                
+                data = {
+                    algorithm: algorithm,
+                    private_key: privateKey,
+                    ciphertext: ciphertext
+                };
+            } else {
+                endpoint = '/decrypt';
+                const key = document.getElementById('key').value;
+                const ciphertext = document.getElementById('ciphertext').value;
+                
+                if (!key && !['Base64', 'UTF-8'].includes(algorithm)) {
+                    errorMessage.textContent = '错误：请输入密钥';
+                    errorAlert.style.display = 'block';
+                    return;
+                }
+                
+                if (!ciphertext) {
+                    errorMessage.textContent = '错误：请输入密文';
+                    errorAlert.style.display = 'block';
+                    return;
+                }
+                
+                data = {
+                    algorithm: algorithm,
+                    key: key,
+                    ciphertext: ciphertext
+                };
+            }
+
+            fetch(endpoint, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    errorMessage.textContent = data.error;
+                    errorAlert.style.display = 'block';
+                } else if (endpoint === '/verify') {
+                    verifyResult.style.display = 'block';
+                    verifyMessage.textContent = data.verified ? '签名验证成功' : '签名验证失败';
+                    verifyResult.className = 'verify-result';  // 使用统一的样式
+                } else {
+                    document.getElementById('plaintext').value = data.plaintext;
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                errorMessage.textContent = '请求失败: ' + error;
+                errorAlert.style.display = 'block';
+            });
+        }
+
+        // 根据选择的算法动态调整界面
+        document.getElementById('algorithm').addEventListener('change', function() {
+            const algorithm = this.value;
+            const keyGroup = document.getElementById('keyGroup');
+            const publicKeyGroup = document.getElementById('publicKeyGroup');
+            const privateKeyGroup = document.getElementById('privateKeyGroup');
+            const generateBtn = document.getElementById('generateBtn');
+            const encryptBtn = document.getElementById('encryptBtn');
+            const decryptBtn = document.getElementById('decryptBtn');
+            const signatureGroup = document.getElementById('signatureGroup');
+            const ciphertextGroup = document.getElementById('ciphertextGroup');
+            
+            // 清空所有输入框
+            document.getElementById('key').value = '';
+            document.getElementById('publicKey').value = '';
+            document.getElementById('privateKey').value = '';
+            document.getElementById('plaintext').value = '';
+            document.getElementById('signature').value = '';
+            document.getElementById('ciphertext').value = '';
+            
+            // 重置所有元素
+            keyGroup.style.display = 'block';
+            publicKeyGroup.style.display = 'none';
+            privateKeyGroup.style.display = 'none';
+            generateBtn.style.display = 'none';
+            signatureGroup.style.display = 'none';
+            ciphertextGroup.style.display = 'block';
+            encryptBtn.textContent = '加密';
+            decryptBtn.textContent = '解密';
+            decryptBtn.style.display = 'block';
+
+            // 根据算法类型调整界面
+            if (['SHA1', 'SHA256', 'SHA3', 'RIPEMD160'].includes(algorithm)) {
+                // 普通哈希算法
+                keyGroup.style.display = 'none';
+                decryptBtn.style.display = 'none';
+                encryptBtn.textContent = '计算哈希';
+            } else if (['HMAC-SHA1', 'HMAC-SHA256', 'PBKDF2'].includes(algorithm)) {
+                // 需要密钥的哈希算法
+                keyGroup.style.display = 'block';
+                decryptBtn.style.display = 'none';
+                encryptBtn.textContent = '计算哈希';
+            } else if (['Base64', 'UTF-8'].includes(algorithm)) {
+                // 编码算法
+                keyGroup.style.display = 'none';
+                encryptBtn.textContent = '编码';
+                decryptBtn.textContent = '解码';
+            } else if (['ECC', 'ECDSA', 'RSA-SHA1'].includes(algorithm)) {
+                // 数字签名算法
+                keyGroup.style.display = 'none';
+                publicKeyGroup.style.display = 'block';
+                privateKeyGroup.style.display = 'block';
+                generateBtn.style.display = 'inline-block';
+                signatureGroup.style.display = 'block';
+                ciphertextGroup.style.display = 'none';
+                encryptBtn.textContent = '签名';
+                decryptBtn.textContent = '验证签名';
+            } else if (algorithm === 'RSA') {
+                // RSA加密
+                keyGroup.style.display = 'none';
+                publicKeyGroup.style.display = 'block';
+                privateKeyGroup.style.display = 'block';
+                generateBtn.style.display = 'inline-block';
+                signatureGroup.style.display = 'none';
+                ciphertextGroup.style.display = 'block';
+                encryptBtn.textContent = '加密';
+                decryptBtn.textContent = '解密';
+            } else {
+                // 对称加密算法
+                keyGroup.style.display = 'block';
+                publicKeyGroup.style.display = 'none';
+                privateKeyGroup.style.display = 'none';
+                generateBtn.style.display = 'none';
+                signatureGroup.style.display = 'none';
+                ciphertextGroup.style.display = 'block';
+                encryptBtn.textContent = '加密';
+                decryptBtn.textContent = '解密';
+            }
+        });
+
+        function updateOperations() {
+            const algorithm = document.getElementById('algorithm').value;
+            const operationsDiv = document.getElementById('operations');
+            
+            // 清空现有操作
+            operationsDiv.innerHTML = '';
+            
+            // 对称加密算法
+            if (['AES', 'SM4', 'RC6'].includes(algorithm)) {
+                addOperation('加密');
+                addOperation('解密');
+            }
+            // 非对称加密算法
+            else if (['RSA', 'ECC', 'RSA-SHA1', 'ECDSA'].includes(algorithm)) {
+                addOperation('生成密钥对');
+                addOperation('加密');
+                addOperation('解密');
+                addOperation('签名');
+                addOperation('验签');
+            }
+            // 哈希算法
+            else if (['SHA1', 'SHA256', 'SHA3', 'RIPEMD160'].includes(algorithm)) {
+                addOperation('哈希');
+            }
+            // HMAC算法
+            else if (['HMAC-SHA1', 'HMAC-SHA256'].includes(algorithm)) {
+                addOperation('哈希');
+            }
+            // PBKDF2算法
+            else if (algorithm === 'PBKDF2') {
+                addOperation('派生密钥');
+            }
+            // 编码算法
+            else if (['Base64', 'UTF-8'].includes(algorithm)) {
+                addOperation('编码');
+                addOperation('解码');
+            }
+            
+            // 更新表单显示
+            updateFormDisplay();
+        }
+
+        function updateFormDisplay() {
+            const algorithm = document.getElementById('algorithm').value;
+            const operation = document.querySelector('input[name="operation"]:checked').value;
+            
+            // 隐藏所有输入区域
+            document.getElementById('keyArea').style.display = 'none';
+            document.getElementById('publicKeyArea').style.display = 'none';
+            document.getElementById('privateKeyArea').style.display = 'none';
+            document.getElementById('plaintextArea').style.display = 'none';
+            document.getElementById('ciphertextArea').style.display = 'none';
+            document.getElementById('signatureArea').style.display = 'none';
+            
+            if (operation === '生成密钥对') {
+                // 显示公钥和私钥输出区域
+                document.getElementById('publicKeyArea').style.display = 'block';
+                document.getElementById('privateKeyArea').style.display = 'block';
+            } else if (operation === '加密') {
+                if (['RSA', 'RSA-SHA1'].includes(algorithm)) {
+                    // 非对称加密使用公钥加密
+                    document.getElementById('publicKeyArea').style.display = 'block';
+                } else if (!['Base64', 'UTF-8'].includes(algorithm)) {
+                    // 对称加密使用密钥
+                    document.getElementById('keyArea').style.display = 'block';
+                }
+                document.getElementById('plaintextArea').style.display = 'block';
+                document.getElementById('ciphertextArea').style.display = 'block';
+            } else if (operation === '解密') {
+                if (['RSA', 'RSA-SHA1'].includes(algorithm)) {
+                    // 非对称加密使用私钥解密
+                    document.getElementById('privateKeyArea').style.display = 'block';
+                } else if (!['Base64', 'UTF-8'].includes(algorithm)) {
+                    // 对称加密使用密钥
+                    document.getElementById('keyArea').style.display = 'block';
+                }
+                document.getElementById('plaintextArea').style.display = 'block';
+                document.getElementById('ciphertextArea').style.display = 'block';
+            } else if (operation === '签名') {
+                document.getElementById('privateKeyArea').style.display = 'block';
+                document.getElementById('plaintextArea').style.display = 'block';
+                document.getElementById('signatureArea').style.display = 'block';
+            } else if (operation === '验签') {
+                document.getElementById('publicKeyArea').style.display = 'block';
+                document.getElementById('plaintextArea').style.display = 'block';
+                document.getElementById('signatureArea').style.display = 'block';
+            } else if (['编码', '解码'].includes(operation)) {
+                document.getElementById('plaintextArea').style.display = 'block';
+                document.getElementById('ciphertextArea').style.display = 'block';
+            } else {
+                // 哈希和密钥派生
+                if (['HMAC-SHA1', 'HMAC-SHA256'].includes(algorithm)) {
+                    document.getElementById('keyArea').style.display = 'block';
+                }
+                document.getElementById('plaintextArea').style.display = 'block';
+                document.getElementById('ciphertextArea').style.display = 'block';
+            }
+        }
+    </script>
+
+    <script>
+        // 添加加载动画
+        document.addEventListener('DOMContentLoaded', function() {
+            document.querySelectorAll('.animate__animated').forEach(element => {
+                element.classList.add('animate__fadeIn');
+            });
+        });
+
+        // 添加操作反馈
+        function showToast(message, type = 'info') {
+            const toast = document.createElement('div');
+            toast.className = `alert alert-${type} fixed bottom-4 right-4 w-auto max-w-sm animate__animated animate__fadeInUp`;
+            toast.innerHTML = `<span>${message}</span>`;
+            document.body.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.classList.remove('animate__fadeInUp');
+                toast.classList.add('animate__fadeOutDown');
+                setTimeout(() => toast.remove(), 500);
+            }, 3000);
+        }
+
+        // 修改原有的错误提示为Toast提示
+        const originalAlert = window.alert;
+        window.alert = function(message) {
+            if (message.includes('成功')) {
+                showToast(message, 'success');
+            } else if (message.includes('失败') || message.includes('错误')) {
+                showToast(message, 'error');
+            } else {
+                showToast(message, 'info');
+            }
+        };
+    </script>
+</body>
+</html> 

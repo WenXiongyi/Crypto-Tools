@@ -1,0 +1,53 @@
+.site-layout-background {
+  background: #fff;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  padding: 0 24px;
+}
+
+.logo {
+  width: 120px;
+  height: 31px;
+  margin: 16px 24px 16px 0;
+  float: left;
+}
+
+.ant-layout {
+  min-height: 100vh;
+}
+
+.ant-layout-sider {
+  background: #fff;
+}
+
+.ant-menu-item a {
+  color: rgba(0, 0, 0, 0.65);
+}
+
+.ant-menu-item-selected a {
+  color: #1890ff;
+}
+
+.algorithm-card {
+  margin-bottom: 24px;
+}
+
+.result-area {
+  margin-top: 16px;
+  padding: 16px;
+  background: #f5f5f5;
+  border-radius: 4px;
+}
+
+.copy-button {
+  margin-left: 8px;
+}
+
+.operation-buttons {
+  margin-top: 16px;
+  display: flex;
+  gap: 8px;
+} 

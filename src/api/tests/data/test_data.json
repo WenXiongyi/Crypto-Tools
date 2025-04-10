@@ -1,0 +1,17 @@
+{
+    "aes": {
+        "key": "test_key_16bytes",
+        "plaintext": "test_plaintext",
+        "ciphertext": "test_ciphertext"
+    },
+    "rsa": {
+        "public_key": "test_public_key",
+        "private_key": "test_private_key",
+        "plaintext": "test_plaintext",
+        "signature": "test_signature"
+    },
+    "sha256": {
+        "plaintext": "test_plaintext",
+        "hash": "test_hash"
+    }
+} 
